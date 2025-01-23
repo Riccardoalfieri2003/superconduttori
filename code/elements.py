@@ -2,7 +2,12 @@ import pandas as pd
 import numpy as np
 import re
 
-df=pd.read_csv("data/elements_data.csv")
+import sys
+import os
+project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_path)
+
+df=pd.read_csv(project_path+"\\data\\elements_data.csv")
 
 
 df['Density'] = df['Density'].str.split(' ').str[0].astype(float)
@@ -150,10 +155,14 @@ df['Atomic Number']=df['Atomic Number']
     #"sOrb", "pOrb", "dOrb", "fOrb",
     #"n Qn", "l Qn", "m Qn", "spin Qn",
 
+df['Atomic Weight']=df['Atomic Weight'].astype(float)
+
+
 selected_columns=[
     "Atomic Number",
     "Name",
     "Symbol",
+    "Atomic Weight",
     "Density",
     "Absolute Melting Point",
     "Absolute Boiling Point",
@@ -178,4 +187,4 @@ cleaned_df = df[selected_columns].replace("", np.nan)
 
 print(cleaned_df)
 
-cleaned_df.to_csv('new_dataset.csv', index=False)
+cleaned_df.to_csv('elements.csv', index=False)

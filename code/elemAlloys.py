@@ -28,7 +28,7 @@ def create_alloy_row(parsed_material):
             element_data = elements_df.loc[elements_df['Symbol'] == element].iloc[0]
             row[f'Element{i+1}'] = element
             row[f'Quantity{i+1}'] = quantity
-            row[f'AtomicMass{i+1}'] = element_data['Atomic Number']
+            row[f'AtomicMass{i+1}'] = element_data['Atomic Weight']
             row[f'Electronegativity{i+1}'] = element_data['Electronegativity']
             row[f'Valence{i+1}'] = element_data['Valence']
             row[f'ElectronAffinity{i+1}'] = element_data['ElectronAffinity']
