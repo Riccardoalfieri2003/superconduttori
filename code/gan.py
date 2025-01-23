@@ -215,59 +215,8 @@ class ElementGenerator(nn.Module):
         return quantities
 """
 
-class ElementGenerator(nn.Module):
-    def __init__(self, latent_dim, feature_dim, output_dim, num_elements):
-        super(ElementGenerator, self).__init__()
-        self.latent_dim = latent_dim
-        self.feature_dim = feature_dim
-        self.output_dim = output_dim
-        self.num_elements = num_elements  # Number of possible elements
-
-        # Define the generator network
-        self.model = nn.Sequential(
-            nn.Linear(latent_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),
-            nn.Linear(512, output_dim),
-            nn.Softmax(dim=1)  # Ensure the quantities sum to 1
-        )
-
-        # Define a linear layer to generate element indices
-        self.element_layer = nn.Linear(latent_dim, num_elements)
-
-    def forward(self, batch_size):
-        # Generate latent vectors
-        latent_vectors = torch.randn(batch_size, self.latent_dim)
-
-        # Generate quantities
-        quantities = self.model(latent_vectors)
-
-        # Generate element indices (e.g., integers corresponding to elements)
-        element_indices = torch.argmax(self.element_layer(latent_vectors), dim=1)
-
-        return element_indices, quantities
-
-
-    
-
-class ElementDiscriminator(nn.Module):
-    def __init__(self):
-        super(ElementDiscriminator, self).__init__()
-        # Define layers (e.g., fully connected layers)
-        #self.fc1 = nn.Linear(8 * 9, 512)  # Input size should match the generated data shape
-        self.fc1 = nn.Linear(171, 512)  # Adjust input size to 171 # 171 perchè sono le feature con crystal structure encodate
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, 1)  # Output: real or fake (binary)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))
-        x = torch.sigmoid(self.fc4(x))  # Sigmoid for binary classification
-        return x
-
+from classes import ElementGenerator
+from classes import ElementDiscriminator
 
 # Load the real alloy dataset (gan_alloy_datasets)
 gan_alloy_df = pd.read_csv(project_path+"\\data\\refinedData\\gan_alloy_dataset.csv")
@@ -499,9 +448,10 @@ for epoch in range(epochs):
     real_sample = real_data[random.randint(0, len(real_data) - 1)].unsqueeze(0)  # Randomly pick a real sample
     real_labels = torch.ones((1, 1))  # Label for real data is 1
 
+    """
     print(f"Real sample shape: {real_sample.shape}")
     print(f"Real data shape: {real_data.shape}")
-    print(f"Discriminator input size: {discriminator.fc1.in_features}")
+    print(f"Discriminator input size: {discriminator.fc1.in_features}")"""
 
 
     # Pass real data through discriminator
@@ -553,9 +503,21 @@ for epoch in range(epochs):
     fake_output = discriminator(fake_input)
 
     # Apply sigmoid to ensure output is between 0 and 1
-    fake_output = torch.sigmoid(fake_output)
+    #fake_output = torch.sigmoid(fake_output)
+    fake_output = torch.sigmoid(fake_output.clamp(min=-10, max=10))  # Clamps values to a stable range
+    #print(fake_output)
+    # Check if any value in fake_output is NaN
+    if torch.isnan(fake_output).any():
+        #print("NaN detected in fake_output!")
+        
+        # Set loss to 0.99, ensure fake_output has the same shape as real_labels, and requires gradients
+        fake_loss = torch.tensor(0.99, requires_grad=True).to(fake_output.device).view(-1, 1)  # Ensure requires_grad=True
+        fake_output = fake_loss  # Set fake_output to the same value
+    else:
+        fake_loss = criterion(fake_output, fake_labels)  # Normal loss calculation if no NaN
 
-    fake_loss = criterion(fake_output, fake_labels)
+    
+    #fake_loss = criterion(fake_output, fake_labels)
 
 
     # Generator loss: we want the discriminator to classify fake data as real
@@ -563,7 +525,7 @@ for epoch in range(epochs):
 
     # Backpropagation and optimization for generator
     optimizer_g.zero_grad()  # Zero gradients for generator
-    g_loss.backward()  # Backpropagate generator loss
+    #g_loss.backward()  # Backpropagate generator loss
     optimizer_g.step()  # Update generator
 
     # Discriminator loss: sum of real and fake losses
@@ -572,11 +534,14 @@ for epoch in range(epochs):
     # Backpropagation and optimization for discriminator
     optimizer_d.zero_grad()  # Zero gradients for discriminator
     d_loss.backward(retain_graph=True)  # Backpropagate discriminator loss (no retain_graph)
+
+    g_loss.backward()  # Backpropagate generator loss
+
+
     optimizer_d.step()  # Update discriminator
 
 
 
-    
     print(f"Epoch [{epoch}/{epochs}], D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
 
 print("Training completed.")

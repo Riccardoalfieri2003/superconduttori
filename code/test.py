@@ -1,88 +1,173 @@
 import torch
-import torch.nn as nn
-import numpy as np
-import pandas as pd
-import sys
+
+
+
+
+
 import os
+import sys
+import pandas as pd
+# Load the element properties from the CSV
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_path)
 
-from classes import Generator
-from classes import Discriminator
-# Hyperparameters
-noise_dim = 100  # Dimension of the noise vector
-feature_dim = 72  # Number of features per alloy (adjust based on dataset)
-batch_size = 64
-epochs = 100
-lr = 0.0002
 
 
-# Assuming you have the same dataset used for training, load it as a DataFrame
-alloy_data = pd.read_csv(project_path+"\\data\\refinedData\\gan_alloy_dataset.csv")  # Replace with your actual dataset
+periodic_table = pd.read_csv(project_path+"\\data\\refinedData\\elements.csv")
+
+# List of the features you want to keep for each element
+features = ['Atomic Weight', 'Electronegativity', 'Valence', 'ElectronAffinity', 'Crystal Structure', 'Absolute Melting Point']
 
 
-# Load the models
-generator = Generator(noise_dim, feature_dim)
-discriminator = Discriminator(feature_dim)
+# Get unique crystal structures
+unique_structures = periodic_table['Crystal Structure'].unique()
 
-# Load the state dictionaries into the models
-generator.load_state_dict(torch.load(project_path+'\\models\\generator.pth'))
-discriminator.load_state_dict(torch.load(project_path+'\\models\\discriminator.pth'))
+# Create a mapping of crystal structures to indices
+structure_to_index = {structure: idx for idx, structure in enumerate(unique_structures)}
 
-# Ensure the models are in evaluation mode
+# One-hot encode the crystal structures
+def encode_crystal_structure(crystal_structure):
+    encoded = [0] * len(unique_structures)
+    if crystal_structure in structure_to_index:
+        encoded[structure_to_index[crystal_structure]] = 1
+    return encoded
+
+# Add the one-hot encoded crystal structure to the DataFrame
+periodic_table['Crystal Structure'] = periodic_table['Crystal Structure'].apply(encode_crystal_structure)
+
+
+
+# Create the dictionary with element number as the key and the selected features as the value
+element_properties = {}
+
+# Iterate over each row in the DataFrame
+for index, row in periodic_table.iterrows():
+    element_number = row['Atomic Number']  # Assuming 'Element' column has the element number (1 to 118)
+    
+    # Create a dictionary for the element with the specified features
+    element_info = {feature: row[feature] for feature in features}
+    
+    # Add the element and its info to the dictionary
+    element_properties[element_number] = element_info
+
+# Check the structure
+#for element, properties in element_properties.items():
+#    print(f"{element}: {properties}")
+
+
+
+
+# Create a mapping of element symbols to atomic numbers
+symbol_to_atomic_number = {row['Symbol']: row['Atomic Number'] for index, row in periodic_table.iterrows()}
+
+def get_element_properties(elements):
+    properties = []
+    for element in elements:
+        # Get the atomic number from the element symbol
+        element_number = symbol_to_atomic_number.get(element)
+        
+        if element_number is not None:
+            # Retrieve the element's properties using the atomic number
+            if element_number in element_properties:
+                element_data = element_properties[element_number]
+                
+                # Flatten the feature vector: Add numerical features + one-hot encoded structure
+                flat_features = [
+                    element_data['Atomic Weight'],
+                    element_data['Electronegativity'],
+                    element_data['Valence'],
+                    element_data['ElectronAffinity'],
+                    *element_data['Crystal Structure'],  # Flatten the one-hot encoded structure
+                    element_data['Absolute Melting Point']
+                ]
+                properties.append(flat_features)
+            else:
+                print(f"Warning: Element {element} (atomic number {element_number}) not found in element_properties.")
+        else:
+            print(f"Warning: Element symbol {element} not found in symbol_to_atomic_number.")
+    
+    return properties  # Returns a list of flat numerical feature vectors
+
+
+
+
+
+
+
+
+
+
+
+# Assuming the models are saved as 'generator_model.pth' and 'discriminator_model.pth'
+#discriminator_path = os.path.join('alloy_discriminator.pth')
+#generator_path = os.path.join('alloy_generator.pth')
+
+from classes import ElementGenerator
+from classes import ElementDiscriminator
+
+
+latent_dim = 128  # Dimension of the latent space
+feature_dim = 54  # Number of features (adjust based on dataset)
+output_dim = 9    # Maximum number of quantities (corresponding to 9 elements)
+num_elements = 118  # Change this to the actual number of elements you have
+
+# Now initialize the generator with the required num_elements argument
+generator = ElementGenerator(latent_dim=latent_dim, feature_dim=feature_dim, output_dim=output_dim, num_elements=num_elements)
+discriminator = ElementDiscriminator()
+
+
+
+# Load the state dictionaries
+generator.load_state_dict(torch.load('alloy_generator.pth'))
+discriminator.load_state_dict(torch.load('alloy_discriminator.pth'))
+
+# Set the models to evaluation mode
 generator.eval()
 discriminator.eval()
 
-def preprocess_elements(elements):
-    # Create a list of one-hot encodings for the elements
-    # Assuming you have a mapping of element names to indices in your dataset
-    
-    # Get all element columns (e.g., Element1, Element2, ..., Element9)
-    element_columns = [f'Element{i}' for i in range(1, 10)]  # Adjust based on the number of elements in your dataset
-    
-    # Flatten the unique elements from all element columns
-    unique_elements = pd.unique(alloy_data[element_columns].values.ravel())
-    
-    # Create a mapping of element names to indices
-    element_mapping = {name: idx for idx, name in enumerate(unique_elements)}
-    
-    # Initialize an input vector with zeros
-    input_vector = np.zeros(len(element_mapping))
-    
-    # Set 1 for the input elements in the one-hot encoded vector
-    for element in elements:
-        if element in element_mapping:
-            input_vector[element_mapping[element]] = 1  # Set 1 for the input element
-    
-    # Ensure the input size matches the expected size (e.g., 100)
-    expected_input_size = 100  # Adjust this based on the model's expected input size
-    if len(input_vector) < expected_input_size:
-        input_vector = np.pad(input_vector, (0, expected_input_size - len(input_vector)), 'constant')
-    
-    return torch.tensor(input_vector, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
 
-# Function to generate an alloy and evaluate its realism
-def generate_alloy(elements):
-    # Preprocess the input elements
-    input_data = preprocess_elements(elements)
-    
-    # Generate the alloy using the generator
-    with torch.no_grad():  # Disable gradient calculation for inference
-        generated_alloy = generator(input_data)
-    
-    # Evaluate the generated alloy with the discriminator
-    with torch.no_grad():
-        realism_score = discriminator(generated_alloy)
-    
-    # Print the generated alloy and its realism score
-    print("Generated Alloy Composition: ", generated_alloy)
-    print("Realism Score (0 = fake, 1 = real): ", realism_score.item())
-    
-    if realism_score.item() > 0.5:
-        print("The generated alloy is realistic!")
-    else:
-        print("The generated alloy is not realistic.")
 
-# Example usage:
-input_elements = ["Be", "Li"]  # Elements you want to input
-generate_alloy(input_elements)
+
+def process_input(elements):
+    # Get a list of feature vectors for the elements
+    feature_vectors = get_element_properties(elements)
+
+    
+    
+    # Flatten the list of feature vectors into a single list
+    flattened_features = [value for vector in feature_vectors for value in vector]
+
+    print(flattened_features)
+    
+    # Convert to a PyTorch tensor
+    return torch.tensor(flattened_features).float()
+
+
+
+
+# Example list of elements
+user_input = ['Al', 'Cu', 'Fe']  # Ensure this is a list of full element symbols
+input_tensor = process_input(user_input)
+
+
+
+
+# Pass the input through the generator to get the predicted quantities
+with torch.no_grad():  # Disable gradient computation for inference
+    #predicted_quantities = generator(input_tensor)
+    batch_size = input_tensor.size(0)  # Get the batch size from the input tensor
+    element_indices, predicted_quantities = generator(batch_size)
+
+# Assuming the model output is a tensor of predicted quantities
+print("Predicted Quantities for the Alloy:")
+print(predicted_quantities)
+
+# Assuming predicted_quantities is a tensor with the quantities of each element
+def display_output(predicted_quantities, elements):
+    for element, quantities in zip(elements, predicted_quantities):
+        quantities_str = ", ".join(f"{q:.4f}" for q in quantities)  # Format each quantity to 4 decimal places
+        print(f"{element}: [{quantities_str}]")  # Display all quantities for the element
+
+
+# Display the predicted quantities for the user
+display_output(predicted_quantities, user_input)
