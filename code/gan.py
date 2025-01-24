@@ -72,6 +72,9 @@ for property in properties:
 
 """
 import torch
+torch.autograd.set_detect_anomaly(True)
+
+
 import random
 import pandas as pd
 import torch.nn as nn
@@ -423,15 +426,17 @@ batch_size = 64  # Batch size
 # Preprocess real data from gan_alloy_datasets
 real_data = preprocess_data(gan_alloy_df)  # Ensure real data is in the same format as generated data
 
-latent_dim = 128  # Dimension of the latent space
 feature_dim = 54  # Number of features (adjust based on dataset)
-output_dim = 9    # Maximum number of quantities (corresponding to 9 elements)
+latent_dim = 128  # Dimension of the latent space
+max_elements = 9
+num_elements = 118
+batch_size = 32
+epochs = 50
+learning_rate = 0.0002
 
-num_elements = 118  # Change this to the actual number of elements you have
-
-# Now initialize the generator with the required num_elements argument
-generator = ElementGenerator(latent_dim=latent_dim, feature_dim=feature_dim, output_dim=output_dim, num_elements=num_elements)
-discriminator = ElementDiscriminator()
+# Initialize models
+generator = ElementGenerator(latent_dim=latent_dim, max_elements=max_elements, num_elements=num_elements)
+discriminator = ElementDiscriminator(max_elements=max_elements, num_elements=num_elements)
 
 # Loss function and optimizers
 criterion = nn.BCELoss()  # Binary Cross-Entropy Loss
@@ -444,19 +449,54 @@ for epoch in range(epochs):
     ############################
     optimizer_d.zero_grad()
 
+    """
     # Sample real data
     real_sample = real_data[random.randint(0, len(real_data) - 1)].unsqueeze(0)  # Randomly pick a real sample
     real_labels = torch.ones((1, 1))  # Label for real data is 1
 
-    """
-    print(f"Real sample shape: {real_sample.shape}")
-    print(f"Real data shape: {real_data.shape}")
-    print(f"Discriminator input size: {discriminator.fc1.in_features}")"""
-
-
     # Pass real data through discriminator
-    real_output = discriminator(real_sample)
+    #real_output = discriminator(real_sample)
+
+    real_element_indices, real_quantities = real_sample  # Split real sample into indices and quantities
+
+    # For fake data, you should generate the element indices and quantities using the generator
+    fake_element_indices, fake_quantities = generator(batch_size)
+
+    # Now, pass both element indices and quantities to the discriminator
+    real_output = discriminator(real_element_indices, real_quantities)
+    fake_output = discriminator(fake_element_indices, fake_quantities)
+    """
+
+        # Assuming real_sample is a flattened tensor with 9 elements and their corresponding properties
+    real_sample = real_data[random.randint(0, len(real_data) - 1)].unsqueeze(0)  # Randomly pick a real sample
+    
+
+        # Unpack real sample into element indices and quantities
+    real_element_indices = real_sample[:, :9]  # First 9 values are element indices
+    real_quantities = real_sample[:, 9:18]  # Next 9 values are quantities
+
+    # Clip element indices to ensure they are within the valid range
+    real_element_indices = torch.clamp(real_element_indices, 0, num_elements - 1)
+
+    # Create label for real data (1)
+    real_labels = torch.ones((1, 1))  # Label for real data is 1
+
+    # For fake data, generate the element indices and quantities using the generator
+    fake_element_indices, fake_quantities = generator(batch_size)
+
+    # Clip fake element indices to ensure they are within the valid range
+    fake_element_indices = torch.clamp(fake_element_indices, 0, num_elements - 1)
+
+    # Pass both element indices and quantities to the discriminator
+    real_output = discriminator(real_element_indices, real_quantities)
+    fake_output = discriminator(fake_element_indices, fake_quantities)
+
+    # Calculate loss for real data
     real_loss = criterion(real_output, real_labels)
+
+
+
+    #real_loss = criterion(real_output, real_labels)
 
 
     #fake_labels = torch.zeros((1, 1))  # Label for fake data is 0
@@ -465,17 +505,19 @@ for epoch in range(epochs):
     # Generate fake data
     fake_elements, fake_quantities = generator(batch_size=1)
 
-    # Map generated elements to their properties
     fake_properties = []
     for element in fake_elements:
-        if element.item() in element_properties:
-            properties = list(element_properties[element.item()].values())  # Extract values as a list of numbers
-            # Flatten any sublist inside properties (if any)
-            flat_properties = [item for sublist in properties for item in (sublist if isinstance(sublist, list) else [sublist])]
-            fake_properties.append(flat_properties)
-        else:
-            print(f"Warning: Element {element.item()} not found in dataset.")
-            fake_properties.append([0] * feature_dim)  # Use a default zero vector for missing properties
+        # Iterate over each element in the tensor
+        for e in element:
+            if e.item() in element_properties:
+                properties = list(element_properties[e.item()].values())  # Extract values as a list of numbers
+                # Flatten any sublist inside properties (if any)
+                flat_properties = [item for sublist in properties for item in (sublist if isinstance(sublist, list) else [sublist])]
+                fake_properties.append(flat_properties)
+            else:
+                print(f"Warning: Element {e.item()} not found in dataset.")
+                fake_properties.append([0] * feature_dim)  # Use a default zero vector for missing properties
+
 
     #print(fake_properties)
 
@@ -500,7 +542,8 @@ for epoch in range(epochs):
         fake_input = torch.cat((fake_properties_flat, fake_quantities.flatten()), dim=0).unsqueeze(0)
 
 
-    fake_output = discriminator(fake_input)
+    """
+    #fake_output = discriminator(fake_input)
 
     # Apply sigmoid to ensure output is between 0 and 1
     #fake_output = torch.sigmoid(fake_output)
@@ -518,8 +561,25 @@ for epoch in range(epochs):
 
     
     #fake_loss = criterion(fake_output, fake_labels)
+    """
 
 
+    fake_output = torch.sigmoid(fake_output.clamp(min=-10, max=10))  # Clamps values to a stable range
+
+    # Ensure fake_labels has the same shape as fake_output
+    fake_labels = torch.ones((fake_output.size(0), 1), device=fake_output.device)  # Adjust the shape of fake_labels
+
+    # Check if any value in fake_output is NaN
+    if torch.isnan(fake_output).any():
+        # Set loss to 0.99 if NaN is detected
+        fake_loss = torch.tensor(0.99, requires_grad=True).to(fake_output.device).view(-1, 1)  # Ensure requires_grad=True
+        fake_output = fake_loss  # Set fake_output to the same value
+    else:
+        fake_loss = criterion(fake_output, fake_labels)  # Normal loss calculation if no NaN
+
+
+
+    """
     # Generator loss: we want the discriminator to classify fake data as real
     g_loss = criterion(fake_output, real_labels)
 
@@ -539,7 +599,34 @@ for epoch in range(epochs):
 
 
     optimizer_d.step()  # Update discriminator
+    """
 
+
+    real_labels = torch.ones(fake_output.size(0), 1, device=fake_output.device)  # Shape: [32, 1]
+    fake_labels = torch.zeros(fake_output.size(0), 1, device=fake_output.device)  # Shape: [32, 1]
+
+
+
+    # Generator loss: we want the discriminator to classify fake data as real
+    # Generator loss: we want the discriminator to classify fake data as real
+    #real_labels = torch.ones(fake_output.size(0), 1, device=fake_output.device)  # Ensure real_labels has the same size as fake_output
+    g_loss = criterion(fake_output, real_labels)
+
+    # Backpropagation and optimization for generator
+    
+
+    # Discriminator loss: sum of real and fake losses
+    d_loss = real_loss + fake_loss
+
+    # Backpropagation and optimization for discriminator
+    optimizer_d.zero_grad()  # Zero gradients for discriminator
+    d_loss.backward(retain_graph=True)  # Backpropagate discriminator loss (retain_graph=True for later use)
+    optimizer_d.step()  # Update discriminator
+
+
+    optimizer_g.zero_grad()  # Zero gradients for generator
+    g_loss.backward()  # Backpropagate generator loss
+    optimizer_g.step()  # Update generator
 
 
     print(f"Epoch [{epoch}/{epochs}], D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")

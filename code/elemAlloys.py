@@ -20,6 +20,7 @@ def parse_material(material_str):
 
 alloy_df['parsed_material'] = alloy_df['material'].apply(parse_material)
 
+"""
 # Combine element properties with alloy composition
 def create_alloy_row(parsed_material):
     row = {}
@@ -38,10 +39,55 @@ def create_alloy_row(parsed_material):
         else:
             print(f"Warning: Element {element} not found in elements.csv")
     return row
+"""
+
+
+# Define the dictionary for crystal structure to numeric mapping
+crystal_structure_dict = {
+    'Base Orthorhombic': 1,
+    'Base-centered Monoclinic': 2,
+    'Body-centered Cubic': 3,
+    'Centered Tetragonal': 4,
+    'Face-centered Cubic': 5,
+    'Face-centered Orthorhombic': 6,
+    'Simple Hexagonal': 7,
+    'Simple Monoclinic': 8,
+    'Simple Triclinic': 9,
+    'Simple Trigonal': 10,
+    'Tetrahedral Packing': 11,
+    'Unknown': 12
+}
+
+
+# Modify the create_alloy_row function to assign numeric values to crystal structures
+def create_alloy_row(parsed_material):
+    row = {}
+    for i, (element, quantity) in enumerate(parsed_material.items()):
+        if element in elements_df['Symbol'].values:
+            element_data = elements_df.loc[elements_df['Symbol'] == element].iloc[0]
+            row[f'Element{i+1}'] = element
+            row[f'Quantity{i+1}'] = quantity
+            row[f'AtomicMass{i+1}'] = element_data['Atomic Weight']
+            row[f'Electronegativity{i+1}'] = element_data['Electronegativity']
+            row[f'Valence{i+1}'] = element_data['Valence']
+            row[f'ElectronAffinity{i+1}'] = element_data['ElectronAffinity']
+            
+            # Assign the numeric value for the crystal structure using the dictionary
+            crystal_structure = element_data['Crystal Structure']
+            row[f'Crystal Structure{i+1}'] = crystal_structure_dict.get(crystal_structure, 12)  # Default to 12 if not found
+            
+            row[f'Absolute Melting Point{i+1}'] = element_data['Absolute Melting Point']
+            # Add other properties as needed
+        else:
+            print(f"Warning: Element {element} not found in elements.csv")
+    return row
+
+
+
 
 # Generate rows for each alloy
 alloy_rows = alloy_df['parsed_material'].apply(create_alloy_row)
 alloy_expanded_df = pd.DataFrame(alloy_rows.tolist())
 
 # Save the dataset
-alloy_expanded_df.to_csv("gan_alloy_dataset.csv", index=False)
+alloy_expanded_df.to_csv("alloy_formation_dataset.csv", index=False)
