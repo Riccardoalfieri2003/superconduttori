@@ -303,9 +303,9 @@ mice_imputer = IterativeImputer(max_iter=10, random_state=42)
 # Apply the imputer to the input row before prediction
 def predict_quantities(input_elements):
     input_row = construct_input_row(input_elements, element_properties)
-    print(f"input_elements shape: {len(input_elements)}")
-    print(f"element_properties shape: {len(element_properties)}")
-    print(f"input_row shape: {input_row.shape}")
+    #print(f"input_elements shape: {len(input_elements)}")
+    #print(f"element_properties shape: {len(element_properties)}")
+    #print(f"input_row shape: {input_row.shape}")
     
     # Ensure the input data has the same number of features as the model
     input_row_imputed = mice_imputer.fit_transform(input_row)  # Impute missing values using MICE
@@ -319,7 +319,7 @@ def predict_quantities(input_elements):
     # Get the first 'n' quantities where 'n' is the length of the input_elements
     n = len(input_elements)
     return predicted_quantities[:n]
-
+"""
 # Example usage
 input_elements_2 = ['Fe', 'Br']  # Input symbols of elements
 predicted_quantities_2 = predict_quantities(input_elements_2)
@@ -336,3 +336,34 @@ print(f"Predicted quantities for {input_elements_4}: {predicted_quantities_4}")
 input_elements_5 = ['Fe', 'Br', 'O', 'K', 'P']  # Input symbols of elements
 predicted_quantities_5 = predict_quantities(input_elements_5)
 print(f"Predicted quantities for {input_elements_5}: {predicted_quantities_5}")
+"""
+
+def build_material_string(elements, quantities):
+    """
+    Constructs a string representation of the material in the form 'Fe1.50Br2.01O1.11...'.
+
+    Parameters:
+    - elements (list): List of element symbols (e.g., ['Fe', 'Br', 'O']).
+    - quantities (list or numpy array): List of corresponding quantities (e.g., [1.5, 2.01, 1.11]).
+
+    Returns:
+    - str: A string representing the material composition.
+    """
+    material_string = ""
+    for element, quantity in zip(elements, quantities):
+        # Format the quantity to 2 decimal places and append to the element
+        material_string += f"{element}{quantity:.3f}"
+    return material_string
+
+
+
+
+
+input_elements_9 = ['Au','Ag']  # Input symbols of elements
+predicted_quantities_9 = predict_quantities(input_elements_9)
+print(f"Predicted quantities for {input_elements_9}: {predicted_quantities_9}")
+
+
+material_string = build_material_string(input_elements_9, predicted_quantities_9[0])
+print(material_string)
+

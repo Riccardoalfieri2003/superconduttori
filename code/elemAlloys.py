@@ -91,3 +91,17 @@ alloy_expanded_df = pd.DataFrame(alloy_rows.tolist())
 
 # Save the dataset
 alloy_expanded_df.to_csv("alloy_formation_dataset.csv", index=False)
+
+
+
+
+"""
+Okay chat, what I need to build a complete string fro the materials.
+For example:
+Having this:
+Predicted quantities for ['Fe', 'Br', 'O', 'K', 'P', 'S', 'Al', 'He']: [[1.50348456e+00 1.01903793e+00 1.11547436e+00 2.01557973e+00
+  2.39352544e+00 3.51760144e+00 3.43620000e-01 2.96000000e-03
+  7.00000000e-02]]
+I would lik eto have it in form of:
+Fe1.50Br2.01O1.11 and so on
+Could you give me the function to do that?"""
