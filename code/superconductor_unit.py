@@ -220,8 +220,9 @@ def optimize_quantities(material_str, model):
 #string_elem = "Fe2.5Ni1.0Co0.5"
 #string_elem = "Au2.733Ag1.773Fe3.381K0.095P19O2"
 #string_elem = "Au2.733Ag1.773"
+string_elem = "Au1"
 #string_elem = "Au2.041Ag2.404Fe3.354Br1.27"
-string_elem = "Au2.733Ag1.773Fe3.381K0.095P19O2"
+#string_elem = "Au2.733Ag1.773Fe3.381K0.095P19O2"
 
 
 # Parse the material string

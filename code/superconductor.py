@@ -1,4 +1,4 @@
-"""import pandas as pd
+import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -70,7 +70,7 @@ history = model.fit(
     epochs=50, batch_size=8, verbose=1
 )
 
-model.save('superconductor20_model.h5')
+model.save('superconductor10_model.h5')
 
 # Evaluate the model
 test_loss, test_mae = model.evaluate(X_test_scaled, y_test)
@@ -78,8 +78,9 @@ print(f"Test MAE: {test_mae}")
 
 # Predict on new data
 y_pred = model.predict(X_test_scaled)
-"""
 
+
+"""
 
 import pandas as pd
 import numpy as np
@@ -141,4 +142,4 @@ test_loss, test_mae = model.evaluate(X_test, y_test)
 print(f"Test MAE: {test_mae}")
 
 # Predict on new data
-y_pred = model.predict(X_test)
+y_pred = model.predict(X_test)"""
