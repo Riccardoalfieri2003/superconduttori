@@ -11,10 +11,10 @@ import joblib
 # Load the element properties from the CSV
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_path)
-gan_alloy_dataset = pd.read_csv(project_path+"\\data\\refinedData\\alloy_formation_dataset.csv")
+alloy_dataset = pd.read_csv(project_path+"\\data\\refinedData\\alloy_formation_dataset.csv")
 
 # Handle missing values
-gan_alloy_dataset.fillna(value=np.nan, inplace=True)
+#alloy_dataset.fillna(value=np.nan, inplace=True)
 
 # Extract features and target
 features = []
@@ -30,18 +30,22 @@ max_elements = 9
 features = []
 targets = []
 
-
 # Add atomic properties and quantities for each element
 for i in range(1, max_elements + 1):
-    features.extend([f'AtomicMass{i}', f'Electronegativity{i}', f'Valence{i}', f'ElectronAffinity{i}',f'Crystal Structure{i}', f'Absolute Melting Point{i}'])
+    features.extend([f'AtomicMass{i}', f'Electronegativity{i}', 
+                     f'Valence{i}', f'ElectronAffinity{i}',
+                     f'Crystal Structure{i}', f'Absolute Melting Point{i}'])
     targets.append(f'Quantity{i}')
 
-# Combine numerical and encoded features
-numerical_data = gan_alloy_dataset[features].fillna(0)
+
+#Imputazione dei valori mancanti con la media per le caratteristiche
+numerical_data = alloy_dataset[features].fillna(alloy_dataset[features].mean())
+
+# Imputazione dei valori mancanti con la media per i target (quantità)
+y = alloy_dataset[targets].fillna(alloy_dataset[targets].mean()).values
+
 X = np.hstack([numerical_data])
 
-# Combine target quantities
-y = gan_alloy_dataset[targets].fillna(0).values
 
 # Split the data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)

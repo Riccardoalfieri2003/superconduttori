@@ -6,13 +6,13 @@ from joblib import load
 model = load('random_forest_model.joblib')
 
 
-
+"""
 string_elem = "Au2.041Ag2.404Fe3.354"  # Your test string
 string_elem = "Au2.041Ag2.404Fe3.354"
 string_elem = "K3.505Br16.334"
 string_elem = "Au1.171"
 string_elem = "Au2.733Ag1.773Fe3.381K0.095P19O2"
-
+"""
 import numpy as np
 from scipy.optimize import minimize
 import pandas as pd
@@ -105,7 +105,8 @@ def create_alloy_row(parsed_material, elements_df):
                 row[f'MassMagneticSusceptibility{i+1}'] = 0
             MassMagneticSusceptibility.append(row[f'MassMagneticSusceptibility{i+1}'])
 
-            row[f'Absolute Melting Point{i+1}'] = float(element_data['Absolute Melting Point'].split(' ')[0])
+            try: row[f'Absolute Melting Point{i+1}'] = float(element_data['Absolute Melting Point'].split(' ')[0])
+            except: row[f'Absolute Melting Point{i+1}'] = float(element_data['Absolute Melting Point'])
             amp.append(row[f'Absolute Melting Point{i+1}'])
 
             try:
@@ -143,7 +144,7 @@ def objective_function(quantities, elements, model):
     parsed_material = {element: quantity for element, quantity in zip(elements, quantities)}
     # Generate the alloy row
     alloy_row = create_alloy_row(parsed_material,elements_df)
-    #print(alloy_row)
+
     # Predict Tc using the model (replace this with your model's prediction function)
     Tc = abs(model.predict([list(alloy_row.values())])[0])  # Assuming the model takes a list of feature values
     return -Tc  # Negate to maximize Tc
@@ -257,27 +258,6 @@ def optimize_quantities(material_str, model):
 
     # Define bounds
     bounds = [(q * 0.8, q * 1.2) for q in initial_quantities]
-
-    # Adjust parameters based on the number of elements
-    #num_elements = len(elements)
-    #maxiter = max(50 - num_elements * 5, 10)  # Reduce iterations as elements increase
-    #popsize = max(5 - num_elements, 2)  # Reduce population size as elements increase
-    #tol = 1e-5 * num_elements  # Increase tolerance for larger element sets
-
-    #maxiter=50,  # Reduce iterations
-    #popsize=5,
-    
-    # Global Search with dynamic parameters
-    """global_result = differential_evolution(
-        lambda quantities: objective_function(quantities, elements, model),
-        bounds=bounds,
-        maxiter=100,
-        popsize=10,
-        #mutation=(0.5, 1),
-        mutation=(0.8, 1.3),
-        recombination=0.9,
-        tol=1e-5
-    )"""
     
     global_result = differential_evolution(
         lambda quantities: objective_function(quantities, elements, model),
@@ -310,6 +290,20 @@ def optimize_quantities(material_str, model):
     return optimized_material
 
 
+
+# Global Search with dynamic parameters
+    """global_result = differential_evolution(
+        lambda quantities: objective_function(quantities, elements, model),
+        bounds=bounds,
+        maxiter=100,
+        popsize=10,
+        #mutation=(0.5, 1),
+        mutation=(0.8, 1.3),
+        recombination=0.9,
+        tol=1e-5
+    )"""
+
+
 # Example usage
 # Replace `your_model` with your trained model instance
 #string_elem = "Fe2.5Ni1.0Co0.5"
@@ -318,16 +312,16 @@ def optimize_quantities(material_str, model):
 #string_elem = "Au2.041Ag2.404Fe3.354Br1.27"
 #string_elem = "Au2.733Ag1.773Fe3.381K0.095P19O2"
 
-string_elem = "Au2.041Ag2.404Fe3.354Br1.27In0.3K1.79"
-#string_elem = "Au1"
-
-# Parse the material string
-parsed_material = parse_material(string_elem)
-#print(parsed_material)
-initial_alloy_row = create_alloy_row(parsed_material,elements_df)
-#print(initial_alloy_row)
 
 import time
+material_string = "Au2.041Ag2.404Fe3.354"
+
+
+print()
+
+# Parse the material string
+parsed_material = parse_material(material_string)
+initial_alloy_row = create_alloy_row(parsed_material,elements_df)
 
 
 start_time = time.time()
@@ -336,21 +330,22 @@ end_time = time.time()
 
 print(f"Temperature (Tc) for Unmodified Alloy: {abs(initial_Tc)}")
 print("Material: ", parsed_material)
-
 print(f"Time Taken: {end_time - start_time:.5f} seconds")
 
 print()
 
-
 start_time = time.time()
-optimized_material = optimize_quantities(string_elem, model)
+optimized_material = optimize_quantities(material_string, model)
 end_time = time.time()
 
-print(f"Temperature (Tc) for Unmodified Alloy: {abs(initial_Tc)}")
 print("Optimized Material:", optimized_material)
-
 print(f"Time Taken: {end_time - start_time:.5f} seconds")
 
+
+
+
+
+print()
 
 
 

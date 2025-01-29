@@ -208,12 +208,7 @@ X_train_scaled = scaler.fit_transform(X_train_imputed)
 X_test_scaled = scaler.transform(X_test_imputed)
 
 # Initialize the Random Forest Regressor
-rf_model = RandomForestRegressor(
-    n_estimators=100,  # Number of trees
-    max_depth=None,    # Allow trees to grow fully
-    random_state=42,   # For reproducibility
-    n_jobs=-1          # Use all available cores
-)
+rf_model = RandomForestRegressor( n_estimators=100, random_state=42 )
 
 # Train the model
 rf_model.fit(X_train_scaled, y_train)
@@ -242,3 +237,14 @@ from joblib import dump
 dump(rf_model, 'random_forest_model.joblib')
 
 print("Model saved as 'random_forest_model.joblib'")
+
+
+"""
+# Initialize the Random Forest Regressor
+rf_model = RandomForestRegressor(
+    n_estimators=100,  # Number of trees
+    max_depth=None,    # Allow trees to grow fully
+    random_state=42,   # For reproducibility
+    n_jobs=-1          # Use all available cores
+)
+"""

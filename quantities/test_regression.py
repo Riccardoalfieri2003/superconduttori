@@ -129,12 +129,12 @@ def build_material_string(elements, quantities):
 
 
 
-input_elements_9 = ['Au','Ag','Fe']  # Input symbols of elements
-predicted_quantities_9 = predict_quantities(input_elements_9)
-#print(f"Predicted quantities for {input_elements_9}: {predicted_quantities_9}")
-material_string = build_material_string(input_elements_9, predicted_quantities_9[0])
+input_elements = ['Au','Ag','Fe']  # Input symbols of elements
+predicted_quantities = predict_quantities(input_elements)
+material_string = build_material_string(input_elements, predicted_quantities[0])
 print(material_string)
 
+"""
 input_elements_9 = ['K','Br']  # Input symbols of elements
 predicted_quantities_9 = predict_quantities(input_elements_9)
 #print(f"Predicted quantities for {input_elements_9}: {predicted_quantities_9}")
@@ -155,3 +155,4 @@ predicted_quantities_9 = predict_quantities(input_elements_9)
 material_string = build_material_string(input_elements_9, predicted_quantities_9[0])
 print(material_string)
 
+"""

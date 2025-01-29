@@ -70,7 +70,61 @@ plt.plot(y_flat_filtered, polynomial(y_flat_filtered), color='green', label=f"y 
 # Personalizzazione del grafico
 plt.xlabel("Valori Reali (y)")
 plt.ylabel("Valori Predetti (y_pred)")
-plt.title("Grafico della Regressione Globale (Senza Outlier)")
+plt.title("Grafico della Regressione Globale")
 plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
+
+
+
+# Importanza delle caratteristiche
+feature_importances = model.feature_importances_
+
+# Creare un DataFrame per le importanze delle caratteristiche
+feature_names = features
+importance_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Importance': feature_importances
+}).sort_values(by='Importance', ascending=False)
+
+# Creare una mappa per aggregare le caratteristiche per classe
+class_importance = {
+    'Valenza': 0,
+    'Elettronegatività': 0,
+    'Punto di Fusione': 0,
+    'Affinità Elettronica': 0,
+    'Struttura Cristallina': 0,
+    'Massa Atomica': 0
+}
+
+# Mappare ogni caratteristica alla sua classe
+for feature, importance in zip(feature_names, feature_importances):
+    if 'Valence' in feature:
+        class_importance['Valenza'] += importance
+    elif 'Electronegativity' in feature:
+        class_importance['Elettronegatività'] += importance
+    elif 'Absolute Melting Point' in feature:
+        class_importance['Punto di Fusione'] += importance
+    elif 'ElectronAffinity' in feature:
+        class_importance['Affinità Elettronica'] += importance
+    elif 'Crystal Structure' in feature:
+        class_importance['Struttura Cristallina'] += importance
+    elif 'AtomicMass' in feature:
+        class_importance['Massa Atomica'] += importance
+
+# Convertire il dizionario in un DataFrame per la visualizzazione
+class_importance_df = pd.DataFrame({
+    'Classe': class_importance.keys(),
+    'Importanza': class_importance.values()
+}).sort_values(by='Importanza', ascending=False)
+
+# Generare il grafico delle importanze per classi
+plt.figure(figsize=(8, 6))
+plt.barh(class_importance_df['Classe'], class_importance_df['Importanza'], color='skyblue')
+plt.xlabel("Importanza")
+plt.ylabel("Classe")
+plt.title("Importanza delle Classi di Caratteristiche (Random Forest)")
+plt.gca().invert_yaxis()  # Invertire l'asse per mostrare le classi più importanti in alto
 plt.grid(alpha=0.3)
 plt.show()
